@@ -5,13 +5,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonParseException;
 import com.zzy.indoor_position.controller.vo.RSSITaskVO;
 import com.zzy.indoor_position.controller.vo.ResultVO;
+import com.zzy.indoor_position.service.RSSIManagerService;
 import com.zzy.indoor_position.service.TestService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.List;
 
 @RestController
 public class APIController {
@@ -20,10 +19,13 @@ public class APIController {
     @Resource
     private TestService service;
 
+    @Resource
+    private RSSIManagerService managerService;
+
     /**
      * GET，测试api
      */
-    @GetMapping("/text")
+    @GetMapping("/hello")
     public String text() {
         return service.test();
     }
@@ -35,6 +37,7 @@ public class APIController {
      */
     @PostMapping("/pushRSSIData")
     public String pushRSSIData(@RequestBody String json) {
+        System.out.println(json);
         RSSITaskVO vo = null;
         try {
             vo = new Gson().fromJson(json, RSSITaskVO.class);
@@ -43,9 +46,48 @@ public class APIController {
             System.out.println(e.getMessage());
         }
         if (vo == null) {
-            return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.REQUEST_ERROR));
+            return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.JSON_ERROR));
         } else {
-            return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.SUCCESS));
+            if (managerService.saveRSSIData(vo)) {
+                return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.SUCCESS));
+            } else {
+                return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.FAILED));
+            }
+        }
+    }
+
+    /**
+     * GET
+     * @return 一次任务的rssi数据
+     */
+    @GetMapping("/rssiData")
+    public String getRSSIData(@RequestParam("taskName") String taskName) {
+        if (taskName == null || taskName.isEmpty()) {
+            return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.PARAMS_ERROR));
+        } else {
+            RSSITaskVO rssiTaskVO = managerService.getRSSIData(taskName);
+            if (rssiTaskVO == null) {
+                return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.SUCCESS.getCode(), "未查询到数据", null));
+            }
+            ResultVO<RSSITaskVO> resultVO = new ResultVO<>(ResultVO.ResultEnum.SUCCESS);
+            resultVO.setData(rssiTaskVO);
+            return new Gson().toJson(resultVO);
+        }
+    }
+
+    /**
+     * GET
+     * @return 所有任务的信息
+     */
+    @GetMapping("/allTaskData")
+    public String getAllTaskData() {
+        List<RSSITaskVO> data = managerService.getAllTaskData();
+        if (data == null) {
+            return new Gson().toJson(ResultVO.ResultEnum.FAILED);
+        } else {
+            ResultVO<List<RSSITaskVO>> listResultVO = new ResultVO<>(ResultVO.ResultEnum.SUCCESS);
+            listResultVO.setData(data);
+            return new Gson().toJson(listResultVO);
         }
     }
 }

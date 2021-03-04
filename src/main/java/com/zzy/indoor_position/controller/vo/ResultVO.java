@@ -49,13 +49,24 @@ public class ResultVO<T> {
 
     public enum ResultEnum {
 
-        SUCCESS(200, "成功"), FAILED(400, "失败"), REQUEST_ERROR(500, "请求有误");
+        SUCCESS(200, "成功"),
+        FAILED(400, "失败"),
+        JSON_ERROR(401, "json字符串错误"),
+        PARAMS_ERROR(402, "请求参数有误");
 
         private String msg;
         private int code;
         ResultEnum(int code, String msg) {
             this.msg = msg;
             this.code = code;
+        }
+
+        public String getMsg() {
+            return msg;
+        }
+
+        public int getCode() {
+            return code;
         }
     }
 }

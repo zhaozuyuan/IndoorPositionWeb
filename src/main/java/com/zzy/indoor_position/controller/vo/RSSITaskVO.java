@@ -16,8 +16,19 @@ public class RSSITaskVO {
     //一个坐标下会扫描几个固定的wifi
     private int wifi_count;
 
+    //x或y的单位长度 cm
+    private int unit_length;
+
     //每个坐标收集的不同的rssi数据
     private List<RSSIData> rssi_data;
+
+    public RSSITaskVO(String task_name, int scan_count, int wifi_count, int unit_length, List<RSSIData> rssi_data) {
+        this.task_name = task_name;
+        this.scan_count = scan_count;
+        this.wifi_count = wifi_count;
+        this.rssi_data = rssi_data;
+        this.unit_length = unit_length;
+    }
 
     public String getTask_name() {
         return task_name;
@@ -51,12 +62,28 @@ public class RSSITaskVO {
         this.rssi_data = rssi_data;
     }
 
+    public int getUnit_length() {
+        return unit_length;
+    }
+
+    public void setUnit_length(int unit_length) {
+        this.unit_length = unit_length;
+    }
+
     public static class RSSIData {
         private String wifi_ssid;
         private String wifi_bassid;
         private int x;
         private int y;
-        private int level;
+        private List<Integer> levels;
+
+        public RSSIData(String wifi_ssid, String wifi_bassid, int x, int y, List<Integer> levels) {
+            this.wifi_ssid = wifi_ssid;
+            this.wifi_bassid = wifi_bassid;
+            this.x = x;
+            this.y = y;
+            this.levels = levels;
+        }
 
         public String getWifi_ssid() {
             return wifi_ssid;
@@ -90,12 +117,12 @@ public class RSSITaskVO {
             this.y = y;
         }
 
-        public int getLevel() {
-            return level;
+        public List<Integer> getLevels() {
+            return levels;
         }
 
-        public void setLevel(int level) {
-            this.level = level;
+        public void setLevels(List<Integer> levels) {
+            this.levels = levels;
         }
     }
 
