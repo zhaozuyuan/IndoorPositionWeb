@@ -1,5 +1,7 @@
 package com.zzy.indoor_position.service.impl;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.zzy.indoor_position.controller.vo.RSSITaskVO;
 import com.zzy.indoor_position.service.RSSIManagerService;
 import com.zzy.indoor_position.sql.SQLManager;
@@ -18,7 +20,9 @@ import java.util.stream.Collectors;
 @Service
 public class RSSIManagerImpl implements RSSIManagerService {
 
-    private static AtomicLong atomicNameId = new AtomicLong(System.currentTimeMillis());
+    private AtomicLong mAtomicNameId = new AtomicLong(System.currentTimeMillis());
+
+    private Gson mJsonHelper = new Gson();
 
     @Override
     public boolean saveRSSIData(RSSITaskVO data) {
@@ -35,7 +39,7 @@ public class RSSIManagerImpl implements RSSIManagerService {
         } else {
             //支持并发，和减少冲突
             nameId = System.currentTimeMillis() + (data.getTask_name().hashCode() & 0b11111111 << 20);
-            while (!atomicNameId.compareAndSet(atomicNameId.get(), nameId)) {
+            while (!mAtomicNameId.compareAndSet(mAtomicNameId.get(), nameId)) {
                 nameId = System.currentTimeMillis();
             }
         }
@@ -44,14 +48,16 @@ public class RSSIManagerImpl implements RSSIManagerService {
                 + TableTask.TASK_NAME_ID + ","
                 + TableTask.WIFI_COUNT + ","
                 + TableTask.SCAN_COUNT + ","
-                + TableTask.UNIT_LENGTH
+                + TableTask.UNIT_LENGTH + ","
+                + TableTask.TARGET_WIFI_JSON
                 + ")"
                 + " values("
                 + "'" + data.getTask_name() + "',"
                 + nameId + ","
                 + data.getWifi_count() + ","
                 + data.getScan_count() + ","
-                + data.getUnit_length()
+                + data.getUnit_length() + ","
+                + "'" + mJsonHelper.toJson(data.getWifi_tags()) + "'"
                 + ")";
         System.out.println("saveToTask: " + saveToTask);
         try {
@@ -66,24 +72,20 @@ public class RSSIManagerImpl implements RSSIManagerService {
                 + TableData.X + ","
                 + TableData.Y + ","
                 + TableData.WIFI_SSID + ","
-                + TableData.WIFI_BASSID + ","
-                + TableData.LEVELS
+                + TableData.WIFI_BSSID + ","
+                + TableData.LEVELS_JSON
                 + ")"
                 + "values");
         int size = data.getRssi_data().size();
         for (int i = 0; i < size; i++) {
             RSSITaskVO.RSSIData once = data.getRssi_data().get(i);
-            StringBuilder levelStrBuilder = new StringBuilder();
-            for (int l : once.getLevels()) {
-                levelStrBuilder.append(l).append(",");
-            }
             saveToDataBuilder.append("(")
                     .append(nameId).append(",")
                     .append(once.getX()).append(",")
                     .append(once.getY()).append(",")
                     .append("'").append(once.getWifi_ssid()).append("',")
-                    .append("'").append(once.getWifi_bassid()).append("',")
-                    .append("'").append(levelStrBuilder.toString()).append("'")
+                    .append("'").append(once.getWifi_bssid()).append("',")
+                    .append("'").append(mJsonHelper.toJson(once.getLevels())).append("'")
                     .append(")");
             if (i != size - 1) {
                 saveToDataBuilder.append(",");
@@ -107,62 +109,70 @@ public class RSSIManagerImpl implements RSSIManagerService {
             return null;
         }
 
-        int wifiCount;
-        int scanCount;
-        int unitLength;
         String queryTaskSql = "select * from " + TableTask.NAME + " where " + TableTask.TASK_NAME_ID + "=" + nameId;
         System.out.println("queryTaskSql: " + queryTaskSql);
+        RSSITaskVO rssiTaskVO = null;
         try {
             ResultSet resultSet = SQLManager.getConnection().prepareStatement(queryTaskSql).executeQuery();
-            resultSet.next();
-            wifiCount = resultSet.getInt(TableTask.WIFI_COUNT);
-            scanCount = resultSet.getInt(TableTask.SCAN_COUNT);
-            unitLength = resultSet.getInt(TableTask.UNIT_LENGTH);
+            rssiTaskVO = queryTaskData(resultSet);
         } catch (SQLException throwable) {
             throwable.printStackTrace();
             return null;
         }
 
-        List<RSSITaskVO.RSSIData> dataList = new ArrayList<>();
         String queryDataSql = "select * from " + TableData.NAME + " where " + TableData.TASK_NAME_ID + "=" + nameId;
         System.out.println("queryDataSql: " + queryDataSql);
         try {
             ResultSet resultSet = SQLManager.getConnection().prepareStatement(queryDataSql).executeQuery();
-            while (resultSet.next()) {
-                int x = resultSet.getInt(TableData.X);
-                int y = resultSet.getInt(TableData.Y);
-                String wifiSSID = resultSet.getString(TableData.WIFI_SSID);
-                String wifiBASSID = resultSet.getString(TableData.WIFI_BASSID);
-                String levels = resultSet.getString(TableData.LEVELS);
-                List<Integer> levelList = Arrays.stream(levels.split(","))
-                        .map(Integer::valueOf).collect(Collectors.toList());
-                dataList.add(new RSSITaskVO.RSSIData(wifiSSID, wifiBASSID, x, y, levelList));
-            }
+            rssiTaskVO.setRssi_data(queryRSSIData(resultSet));
         } catch (SQLException throwable) {
             throwable.printStackTrace();
             return null;
         }
-        return new RSSITaskVO(taskName, scanCount, wifiCount, unitLength, dataList);
+        return rssiTaskVO;
     }
 
     @Override
     public List<RSSITaskVO> getAllTaskData() {
         String querySql = "select * from " + TableTask.NAME;
         List<RSSITaskVO> result = new ArrayList<>();
+        ResultSet resultSet;
         try {
-            ResultSet resultSet = SQLManager.getConnection().prepareStatement(querySql).executeQuery();
+            resultSet = SQLManager.getConnection().prepareStatement(querySql).executeQuery();
             while (resultSet.next()) {
-                String taskName = resultSet.getString(TableTask.TASK_NAME);
-                int wifiCount = resultSet.getInt(TableTask.WIFI_COUNT);
-                int scanCount = resultSet.getInt(TableTask.SCAN_COUNT);
-                int unitLength = resultSet.getInt(TableTask.UNIT_LENGTH);
-                result.add(new RSSITaskVO(taskName, scanCount, wifiCount, unitLength, null));
+                result.add(queryTaskData(resultSet));
             }
-            return result;
         } catch (SQLException throwable) {
             throwable.printStackTrace();
+            return null;
         }
-        return null;
+        return result;
+    }
+
+    private RSSITaskVO queryTaskData(ResultSet resultSet) throws SQLException {
+        String taskName = resultSet.getString(TableTask.TASK_NAME);
+        int wifiCount = resultSet.getInt(TableTask.WIFI_COUNT);
+        int scanCount = resultSet.getInt(TableTask.SCAN_COUNT);
+        int unitLength = resultSet.getInt(TableTask.UNIT_LENGTH);
+        List<RSSITaskVO.WifiTag> wifiTags = mJsonHelper.fromJson(
+                resultSet.getString(TableTask.TARGET_WIFI_JSON),
+                new TypeToken<List<RSSITaskVO.WifiTag>>(){}.getType());
+        return new RSSITaskVO(taskName, scanCount, wifiCount, unitLength, wifiTags, null);
+    }
+
+    private List<RSSITaskVO.RSSIData> queryRSSIData(ResultSet resultSet) throws SQLException {
+        List<RSSITaskVO.RSSIData> dataList = new ArrayList<>();
+        while (resultSet.next()) {
+            int x = resultSet.getInt(TableData.X);
+            int y = resultSet.getInt(TableData.Y);
+            String wifiSSID = resultSet.getString(TableData.WIFI_SSID);
+            String wifiBssid = resultSet.getString(TableData.WIFI_BSSID);
+            String levels = resultSet.getString(TableData.LEVELS_JSON);
+            List<Integer> levelList = Arrays.stream(levels.split(","))
+                    .map(Integer::valueOf).collect(Collectors.toList());
+            dataList.add(new RSSITaskVO.RSSIData(wifiSSID, wifiBssid, x, y, levelList));
+        }
+        return dataList;
     }
 
     private long queryNameId(String taskName) {

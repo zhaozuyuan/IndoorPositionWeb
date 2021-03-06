@@ -13,4 +13,6 @@ public interface TableTask {
         String SCAN_COUNT = "scan_count";
 
         String UNIT_LENGTH = "unit_length";
+
+        String TARGET_WIFI_JSON = "target_wifi_json";
 }

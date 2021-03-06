@@ -12,7 +12,7 @@ public interface TableData {
 
         String WIFI_SSID = "wifi_ssid";
 
-        String WIFI_BASSID = "wifi_bassid";
+        String WIFI_BSSID = "wifi_bssid";
 
-        String LEVELS = "levels";
+        String LEVELS_JSON = "levels_json";
 }

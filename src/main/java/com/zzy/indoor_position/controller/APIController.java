@@ -83,7 +83,7 @@ public class APIController {
     public String getAllTaskData() {
         List<RSSITaskVO> data = managerService.getAllTaskData();
         if (data == null) {
-            return new Gson().toJson(ResultVO.ResultEnum.FAILED);
+            return new Gson().toJson(new ResultVO<>(ResultVO.ResultEnum.FAILED));
         } else {
             ResultVO<List<RSSITaskVO>> listResultVO = new ResultVO<>(ResultVO.ResultEnum.SUCCESS);
             listResultVO.setData(data);

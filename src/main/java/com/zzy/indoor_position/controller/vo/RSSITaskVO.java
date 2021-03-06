@@ -19,15 +19,19 @@ public class RSSITaskVO {
     //x或y的单位长度 cm
     private int unit_length;
 
+    //扫描的wifi信息
+    private List<WifiTag> wifi_tags;
+
     //每个坐标收集的不同的rssi数据
     private List<RSSIData> rssi_data;
 
-    public RSSITaskVO(String task_name, int scan_count, int wifi_count, int unit_length, List<RSSIData> rssi_data) {
+    public RSSITaskVO(String task_name, int scan_count, int wifi_count, int unit_length, List<WifiTag> wifi_tags, List<RSSIData> rssi_data) {
         this.task_name = task_name;
         this.scan_count = scan_count;
         this.wifi_count = wifi_count;
         this.rssi_data = rssi_data;
         this.unit_length = unit_length;
+        this.wifi_tags = wifi_tags;
     }
 
     public String getTask_name() {
@@ -70,16 +74,24 @@ public class RSSITaskVO {
         this.unit_length = unit_length;
     }
 
+    public List<WifiTag> getWifi_tags() {
+        return wifi_tags;
+    }
+
+    public void setWifi_tags(List<WifiTag> wifi_tags) {
+        this.wifi_tags = wifi_tags;
+    }
+
     public static class RSSIData {
         private String wifi_ssid;
-        private String wifi_bassid;
+        private String wifi_bssid;
         private int x;
         private int y;
         private List<Integer> levels;
 
-        public RSSIData(String wifi_ssid, String wifi_bassid, int x, int y, List<Integer> levels) {
+        public RSSIData(String wifi_ssid, String wifi_bssid, int x, int y, List<Integer> levels) {
             this.wifi_ssid = wifi_ssid;
-            this.wifi_bassid = wifi_bassid;
+            this.wifi_bssid = wifi_bssid;
             this.x = x;
             this.y = y;
             this.levels = levels;
@@ -93,12 +105,12 @@ public class RSSITaskVO {
             this.wifi_ssid = wifi_ssid;
         }
 
-        public String getWifi_bassid() {
-            return wifi_bassid;
+        public String getWifi_bssid() {
+            return wifi_bssid;
         }
 
-        public void setWifi_bassid(String wifi_bassid) {
-            this.wifi_bassid = wifi_bassid;
+        public void setWifi_bssid(String wifi_bssid) {
+            this.wifi_bssid = wifi_bssid;
         }
 
         public int getX() {
@@ -123,6 +135,32 @@ public class RSSITaskVO {
 
         public void setLevels(List<Integer> levels) {
             this.levels = levels;
+        }
+    }
+
+    public static class WifiTag {
+        private String ssid;
+        private String bssid;
+
+        public WifiTag(String ssid, String bssid) {
+            this.ssid = ssid;
+            this.bssid = bssid;
+        }
+
+        public String getSsid() {
+            return ssid;
+        }
+
+        public void setSsid(String ssid) {
+            this.ssid = ssid;
+        }
+
+        public String getBssid() {
+            return bssid;
+        }
+
+        public void setBssid(String bssid) {
+            this.bssid = bssid;
         }
     }
 
