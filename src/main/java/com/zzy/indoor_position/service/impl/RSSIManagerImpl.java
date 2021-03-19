@@ -12,10 +12,8 @@ import org.springframework.stereotype.Service;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 
 @Service
 public class RSSIManagerImpl implements RSSIManagerService {
@@ -114,7 +112,9 @@ public class RSSIManagerImpl implements RSSIManagerService {
         RSSITaskVO rssiTaskVO = null;
         try {
             ResultSet resultSet = SQLManager.getConnection().prepareStatement(queryTaskSql).executeQuery();
-            rssiTaskVO = queryTaskData(resultSet);
+            while (resultSet.next()) {
+                rssiTaskVO = queryTaskDataForce(resultSet);
+            }
         } catch (SQLException throwable) {
             throwable.printStackTrace();
             return null;
@@ -135,12 +135,13 @@ public class RSSIManagerImpl implements RSSIManagerService {
     @Override
     public List<RSSITaskVO> getAllTaskData() {
         String querySql = "select * from " + TableTask.NAME;
+        System.out.println("queryAllTask: " + querySql);
         List<RSSITaskVO> result = new ArrayList<>();
         ResultSet resultSet;
         try {
             resultSet = SQLManager.getConnection().prepareStatement(querySql).executeQuery();
             while (resultSet.next()) {
-                result.add(queryTaskData(resultSet));
+                result.add(queryTaskDataForce(resultSet));
             }
         } catch (SQLException throwable) {
             throwable.printStackTrace();
@@ -149,14 +150,15 @@ public class RSSIManagerImpl implements RSSIManagerService {
         return result;
     }
 
-    private RSSITaskVO queryTaskData(ResultSet resultSet) throws SQLException {
+    private RSSITaskVO queryTaskDataForce(ResultSet resultSet) throws SQLException {
         String taskName = resultSet.getString(TableTask.TASK_NAME);
         int wifiCount = resultSet.getInt(TableTask.WIFI_COUNT);
         int scanCount = resultSet.getInt(TableTask.SCAN_COUNT);
         int unitLength = resultSet.getInt(TableTask.UNIT_LENGTH);
         List<RSSITaskVO.WifiTag> wifiTags = mJsonHelper.fromJson(
                 resultSet.getString(TableTask.TARGET_WIFI_JSON),
-                new TypeToken<List<RSSITaskVO.WifiTag>>(){}.getType());
+                new TypeToken<List<RSSITaskVO.WifiTag>>() {
+                }.getType());
         return new RSSITaskVO(taskName, scanCount, wifiCount, unitLength, wifiTags, null);
     }
 
@@ -168,8 +170,7 @@ public class RSSIManagerImpl implements RSSIManagerService {
             String wifiSSID = resultSet.getString(TableData.WIFI_SSID);
             String wifiBssid = resultSet.getString(TableData.WIFI_BSSID);
             String levels = resultSet.getString(TableData.LEVELS_JSON);
-            List<Integer> levelList = Arrays.stream(levels.split(","))
-                    .map(Integer::valueOf).collect(Collectors.toList());
+            List<Integer> levelList = mJsonHelper.fromJson(levels, new TypeToken<List<Integer>>(){}.getType());
             dataList.add(new RSSITaskVO.RSSIData(wifiSSID, wifiBssid, x, y, levelList));
         }
         return dataList;

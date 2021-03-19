@@ -7,13 +7,62 @@ import org.springframework.stereotype.Service;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.concurrent.*;
 
 @Service
 public class TestServiceImpl implements TestService {
 
     public static void main(String[] args) {
-        int i = 0b0100 | 8;
-        System.out.println(i);
+
+        int index = 0;
+        int value = 0;
+        HashMap<Integer, Integer> map = new HashMap<>();
+        int i = map.put(index, value);
+
+
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(2, 2, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>(), new ThreadFactory() {
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t =  new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        r.run();
+                    }
+                });
+                return t;
+            }
+        });
+
+
+        Future<String> future1 =  executor.submit(new Callable<String>() {
+            @Override
+            public String call() throws Exception {
+                System.out.println("hello world");
+                return "hello world";
+            }
+        });
+
+        Future<String> future2 = executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("hello world");
+            }
+        }, "hello world");
+
+        Future<?> future3 = executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("hello world");
+            }
+        });
+
+        executor.execute(new Runnable() {
+            @Override
+            public void run() {
+                System.out.println("hello world");
+            }
+        });
     }
 
     @Override
